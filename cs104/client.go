@@ -33,7 +33,7 @@ type Client struct {
 	// channel
 	rcvASDU  chan []byte // for received asdu
 	sendASDU chan []byte // for send asdu
-	rcvRaw   chan []byte // for recvLoop raw cs104 frame
+	RcvRaw   chan []byte // for recvLoop raw cs104 frame
 	sendRaw  chan []byte // for sendLoop raw cs104 frame
 
 	// I帧的发送与接收序号
@@ -72,7 +72,7 @@ func NewClient(handler ClientHandlerInterface, o *ClientOption) *Client {
 		handler:          handler,
 		rcvASDU:          make(chan []byte, o.config.RecvUnAckLimitW<<4),
 		sendASDU:         make(chan []byte, o.config.SendUnAckLimitK<<4),
-		rcvRaw:           make(chan []byte, o.config.RecvUnAckLimitW<<5),
+		RcvRaw:           make(chan []byte, o.config.RecvUnAckLimitW<<5),
 		sendRaw:          make(chan []byte, o.config.SendUnAckLimitK<<5), // may not block!
 		Clog:             clog.NewLogger("cs104 client => "),
 		onConnect:        func(*Client) {},
@@ -201,7 +201,7 @@ func (sf *Client) recvLoop() {
 				if rdCnt == length {
 					apdu := rawData[:length]
 					sf.Debug("RX Raw[% x]", apdu)
-					sf.rcvRaw <- apdu
+					sf.RcvRaw <- apdu
 				}
 			}
 		}
@@ -346,7 +346,7 @@ func (sf *Client) run(ctx context.Context) {
 				idleTimeout3Sine = testFrAliveSendSince
 			}
 
-		case apdu := <-sf.rcvRaw:
+		case apdu := <-sf.RcvRaw:
 			idleTimeout3Sine = time.Now() // 每收到一个i帧,S帧,U帧, 重置空闲定时器, t3
 			apci, asduVal := parse(apdu)
 			switch head := apci.(type) {
@@ -454,7 +454,7 @@ loop:
 	for {
 		select {
 		case <-sf.sendRaw:
-		case <-sf.rcvRaw:
+		case <-sf.RcvRaw:
 		case <-sf.rcvASDU:
 		case <-sf.sendASDU:
 		default:
